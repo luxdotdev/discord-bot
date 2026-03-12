@@ -69,16 +69,20 @@ export async function execute(interaction: Interaction) {
           span.recordException(error);
         }
 
-        if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({
-            content: "Something went wrong. Try again later.",
-            flags: [MessageFlags.Ephemeral],
-          });
-        } else {
-          await interaction.reply({
-            content: "Something went wrong. Try again later.",
-            flags: [MessageFlags.Ephemeral],
-          });
+        try {
+          if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({
+              content: "Something went wrong. Try again later.",
+              flags: [MessageFlags.Ephemeral],
+            });
+          } else {
+            await interaction.reply({
+              content: "Something went wrong. Try again later.",
+              flags: [MessageFlags.Ephemeral],
+            });
+          }
+        } catch {
+          // Interaction may have expired — nothing we can do
         }
       } finally {
         event.duration_ms = Date.now() - startTime;
