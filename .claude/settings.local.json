@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun --bun run prisma migrate dev --name add-guild-configs 2>&1)",
+      "Bash(bun --bun run prisma generate 2>&1 && bunx tsc --noEmit 2>&1)"
+    ]
+  }
+}
