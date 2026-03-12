@@ -2,11 +2,10 @@ import { type Client, Events, REST, Routes } from "discord.js";
 import * as compare from "../commands/compare.ts";
 import * as leaderboard from "../commands/leaderboard.ts";
 import * as profile from "../commands/profile.ts";
-import * as setup from "../commands/setup.ts";
 import * as team from "../commands/team.ts";
 import { logger } from "../utils/logger.ts";
 
-const commands = [setup, leaderboard, team, profile, compare];
+const commands = [leaderboard, team, profile, compare];
 
 export const name = Events.ClientReady;
 export const once = true;
