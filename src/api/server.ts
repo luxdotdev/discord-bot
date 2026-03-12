@@ -1,3 +1,4 @@
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type { Client } from "discord.js";
 import { logger } from "../utils/logger.ts";
 import { verifyBotSecret } from "./middleware/auth.ts";
@@ -6,6 +7,8 @@ import {
   sendNotification,
   type NotificationPayload,
 } from "./routes/notifications.ts";
+
+const tracer = trace.getTracer("discord-bot");
 
 export function startServer(client: Client, port: number) {
   const server = Bun.serve({
@@ -19,79 +22,131 @@ export function startServer(client: Client, port: number) {
         path: url.pathname,
       };
 
-      try {
-        if (url.pathname === "/health") {
-          event.outcome = "success";
-          event.status_code = 200;
-          return Response.json({ status: "ok" });
-        }
+      return tracer.startActiveSpan(
+        `${req.method} ${url.pathname}`,
+        async (span) => {
+          span.setAttributes({
+            "http.method": req.method,
+            "http.url": url.pathname,
+          });
 
-        if (!verifyBotSecret(req)) {
-          event.outcome = "unauthorized";
-          event.status_code = 401;
-          return Response.json({ error: "Unauthorized" }, { status: 401 });
-        }
+          try {
+            if (url.pathname === "/health") {
+              event.outcome = "success";
+              event.status_code = 200;
+              span.setAttributes({ "http.status_code": 200 });
+              span.setStatus({ code: SpanStatusCode.OK });
+              return Response.json({ status: "ok" });
+            }
 
-        if (req.method === "GET" && url.pathname === "/api/guilds") {
-          const guilds = getGuilds(client);
-          event.outcome = "success";
-          event.status_code = 200;
-          event.guild_count = guilds.length;
-          return Response.json(guilds);
-        }
+            if (!verifyBotSecret(req)) {
+              event.outcome = "unauthorized";
+              event.status_code = 401;
+              span.setAttributes({ "http.status_code": 401 });
+              span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: "Unauthorized",
+              });
+              return Response.json({ error: "Unauthorized" }, { status: 401 });
+            }
 
-        const channelsMatch = url.pathname.match(
-          /^\/api\/guilds\/(\d+)\/channels$/,
-        );
-        if (req.method === "GET" && channelsMatch) {
-          const guildId = channelsMatch[1];
-          const channels = getGuildChannels(client, guildId);
-          event.outcome = "success";
-          event.status_code = 200;
-          event.guild_id = guildId;
-          event.channel_count = channels.length;
-          return Response.json(channels);
-        }
+            if (req.method === "GET" && url.pathname === "/api/guilds") {
+              const guilds = getGuilds(client);
+              event.outcome = "success";
+              event.status_code = 200;
+              event.guild_count = guilds.length;
+              span.setAttributes({
+                "http.status_code": 200,
+                "bot.guild_count": guilds.length,
+              });
+              span.setStatus({ code: SpanStatusCode.OK });
+              return Response.json(guilds);
+            }
 
-        if (
-          req.method === "POST" &&
-          url.pathname === "/api/notifications/send"
-        ) {
-          const body: NotificationPayload = await req.json();
-          event.guild_id = body.guildId;
-          event.channel_id = body.channelId;
-          event.notification_event = body.event;
-          event.team_id = body.data.teamId;
+            const channelsMatch = url.pathname.match(
+              /^\/api\/guilds\/(\d+)\/channels$/,
+            );
+            if (req.method === "GET" && channelsMatch) {
+              const guildId = channelsMatch[1];
+              const channels = getGuildChannels(client, guildId);
+              event.outcome = "success";
+              event.status_code = 200;
+              event.guild_id = guildId;
+              event.channel_count = channels.length;
+              span.setAttributes({
+                "http.status_code": 200,
+                "discord.guild_id": guildId,
+                "bot.channel_count": channels.length,
+              });
+              span.setStatus({ code: SpanStatusCode.OK });
+              return Response.json(channels);
+            }
 
-          await sendNotification(client, body);
+            if (
+              req.method === "POST" &&
+              url.pathname === "/api/notifications/send"
+            ) {
+              const body: NotificationPayload = await req.json();
+              event.guild_id = body.guildId;
+              event.channel_id = body.channelId;
+              event.notification_event = body.event;
+              event.team_id = body.data.teamId;
+              span.setAttributes({
+                "discord.guild_id": body.guildId,
+                "discord.channel_id": body.channelId,
+                "bot.notification_event": body.event,
+                "bot.team_id": body.data.teamId,
+              });
 
-          event.outcome = "success";
-          event.status_code = 200;
-          return Response.json({ success: true });
-        }
+              await sendNotification(client, body);
 
-        event.outcome = "not_found";
-        event.status_code = 404;
-        return Response.json({ error: "Not found" }, { status: 404 });
-      } catch (error) {
-        event.outcome = "error";
-        event.status_code = 500;
-        event.error =
-          error instanceof Error
-            ? { message: error.message, type: error.name }
-            : { message: String(error) };
-        return Response.json(
-          { error: "Internal server error" },
-          { status: 500 },
-        );
-      } finally {
-        event.duration_ms = Date.now() - startTime;
-        if (event.outcome === "error") {
-          logger.error(event);
-        } else {
-          logger.info(event);
-        }
-      }
+              event.outcome = "success";
+              event.status_code = 200;
+              span.setAttributes({ "http.status_code": 200 });
+              span.setStatus({ code: SpanStatusCode.OK });
+              return Response.json({ success: true });
+            }
+
+            event.outcome = "not_found";
+            event.status_code = 404;
+            span.setAttributes({ "http.status_code": 404 });
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: "Not found",
+            });
+            return Response.json({ error: "Not found" }, { status: 404 });
+          } catch (error) {
+            event.outcome = "error";
+            event.status_code = 500;
+            event.error =
+              error instanceof Error
+                ? { message: error.message, type: error.name }
+                : { message: String(error) };
+
+            span.setAttributes({ "http.status_code": 500 });
+            span.setStatus({
+              code: SpanStatusCode.ERROR,
+              message: error instanceof Error ? error.message : String(error),
+            });
+            if (error instanceof Error) {
+              span.recordException(error);
+            }
+
+            return Response.json(
+              { error: "Internal server error" },
+              { status: 500 },
+            );
+          } finally {
+            event.duration_ms = Date.now() - startTime;
+            if (event.outcome === "error") {
+              logger.error(event);
+            } else {
+              logger.info(event);
+            }
+            span.end();
+          }
+        },
+      );
     },
   });
 

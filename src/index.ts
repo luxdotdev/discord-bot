@@ -1,3 +1,4 @@
+import "./instrumentation.ts";
 import { Client, GatewayIntentBits } from "discord.js";
 import { startServer } from "./api/server.ts";
 import * as interactionCreate from "./events/interactionCreate.ts";
