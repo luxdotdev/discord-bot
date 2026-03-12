@@ -1,5 +1,6 @@
 import {
   SlashCommandBuilder,
+  MessageFlags,
   PermissionFlagsBits,
   type ChatInputCommandInteraction,
 } from "discord.js";
@@ -19,7 +20,7 @@ export const data = new SlashCommandBuilder()
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   // Respond ephemerally so the key isn't visible to others
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const guildId = interaction.guildId;
   if (!guildId) {

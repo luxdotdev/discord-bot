@@ -1,4 +1,4 @@
-import { Events, type Interaction } from "discord.js";
+import { Events, MessageFlags, type Interaction } from "discord.js";
 import * as setup from "../commands/setup.ts";
 import * as leaderboard from "../commands/leaderboard.ts";
 import * as team from "../commands/team.ts";
@@ -51,7 +51,7 @@ export async function execute(interaction: Interaction) {
 
     const reply = {
       content: "Something went wrong. Try again later.",
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     };
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(reply);
