@@ -4,6 +4,7 @@ import * as leaderboard from "../commands/leaderboard.ts";
 import * as team from "../commands/team.ts";
 import * as profile from "../commands/profile.ts";
 import * as compare from "../commands/compare.ts";
+import { logger } from "../utils/logger.ts";
 
 const commands = new Map<
   string,
@@ -21,16 +22,33 @@ export const name = Events.InteractionCreate;
 export async function execute(interaction: Interaction) {
   if (!interaction.isChatInputCommand()) return;
 
+  const startTime = Date.now();
+  const event: Record<string, unknown> = {
+    type: "command",
+    command: interaction.commandName,
+    user_id: interaction.user.id,
+    guild_id: interaction.guildId,
+    channel_id: interaction.channelId,
+  };
+
   const command = commands.get(interaction.commandName);
   if (!command) {
-    console.warn(`Unknown command: ${interaction.commandName}`);
+    event.outcome = "unknown_command";
+    event.duration_ms = Date.now() - startTime;
+    logger.error(event);
     return;
   }
 
   try {
     await command.execute(interaction);
+    event.outcome = "success";
   } catch (error) {
-    console.error(`Error executing ${interaction.commandName}:`, error);
+    event.outcome = "error";
+    event.error =
+      error instanceof Error
+        ? { message: error.message, type: error.name }
+        : { message: String(error) };
+
     const reply = {
       content: "Something went wrong. Try again later.",
       ephemeral: true,
@@ -39,6 +57,13 @@ export async function execute(interaction: Interaction) {
       await interaction.followUp(reply);
     } else {
       await interaction.reply(reply);
+    }
+  } finally {
+    event.duration_ms = Date.now() - startTime;
+    if (event.outcome === "error") {
+      logger.error(event);
+    } else {
+      logger.info(event);
     }
   }
 }
