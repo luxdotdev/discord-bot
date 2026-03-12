@@ -1,5 +1,4 @@
 import { Events, MessageFlags, type Interaction } from "discord.js";
-import * as setup from "../commands/setup.ts";
 import * as leaderboard from "../commands/leaderboard.ts";
 import * as team from "../commands/team.ts";
 import * as profile from "../commands/profile.ts";
@@ -11,7 +10,6 @@ const commands = new Map<
   { execute: (interaction: any) => Promise<void> }
 >();
 
-commands.set(setup.data.name, setup);
 commands.set(leaderboard.data.name, leaderboard);
 commands.set(team.data.name, team);
 commands.set(profile.data.name, profile);
@@ -49,14 +47,16 @@ export async function execute(interaction: Interaction) {
         ? { message: error.message, type: error.name }
         : { message: String(error) };
 
-    const reply = {
-      content: "Something went wrong. Try again later.",
-      flags: MessageFlags.Ephemeral,
-    };
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(reply);
+      await interaction.followUp({
+        content: "Something went wrong. Try again later.",
+        flags: [MessageFlags.Ephemeral],
+      });
     } else {
-      await interaction.reply(reply);
+      await interaction.reply({
+        content: "Something went wrong. Try again later.",
+        flags: [MessageFlags.Ephemeral],
+      });
     }
   } finally {
     event.duration_ms = Date.now() - startTime;
