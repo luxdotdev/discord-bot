@@ -4,6 +4,7 @@ import {
 } from "discord.js";
 import { apiGet } from "../utils/api.ts";
 import { brandEmbed, errorEmbed } from "../utils/embeds.ts";
+import { tracedDeferReply, tracedEditReply } from "../utils/interaction.ts";
 
 type CompareData = {
   player1: { name: string; stats: Record<string, unknown> };
@@ -33,7 +34,7 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply();
+  await tracedDeferReply(interaction);
 
   const player1 = interaction.options.getString("player1", true);
   const player2 = interaction.options.getString("player2", true);
@@ -49,7 +50,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     );
 
     if (!result.success) {
-      await interaction.editReply({ embeds: [errorEmbed(result.error)] });
+      await tracedEditReply(interaction, {
+        embeds: [errorEmbed(result.error)],
+      });
       return;
     }
 
@@ -69,10 +72,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    await interaction.editReply({ embeds: [embed] });
-  } catch {
-    await interaction.editReply({
-      embeds: [errorEmbed("Something went wrong. Try again later.")],
-    });
+    await tracedEditReply(interaction, { embeds: [embed] });
+  } catch (error) {
+    if (interaction.deferred || interaction.replied) {
+      await tracedEditReply(interaction, {
+        embeds: [errorEmbed("Something went wrong. Try again later.")],
+      });
+    }
+    throw error;
   }
 }
