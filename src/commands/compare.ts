@@ -6,10 +6,28 @@ import { apiGet } from "../utils/api.ts";
 import { brandEmbed, errorEmbed } from "../utils/embeds.ts";
 import { tracedDeferReply, tracedEditReply } from "../utils/interaction.ts";
 
-type CompareData = {
-  player1: { name: string; stats: Record<string, unknown> };
-  player2: { name: string; stats: Record<string, unknown> };
+type PlayerCompareData = {
+  playerName: string;
+  mapCount: number;
+  aggregated: Record<string, number>;
 };
+
+type CompareData = {
+  player1: PlayerCompareData;
+  player2: PlayerCompareData;
+};
+
+// Stats most useful for a side-by-side comparison
+const COMPARE_STATS = [
+  "eliminationsPer10",
+  "finalBlowsPer10",
+  "deathsPer10",
+  "heroDamagePer10",
+  "healingDealtPer10",
+  "damageTakenPer10",
+  "damageBlockedPer10",
+  "ultimatesEarnedPer10",
+] as const;
 
 export const data = new SlashCommandBuilder()
   .setName("compare")
@@ -18,19 +36,19 @@ export const data = new SlashCommandBuilder()
     opt
       .setName("player1")
       .setDescription("First player name")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((opt) =>
     opt
       .setName("player2")
       .setDescription("Second player name")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addIntegerOption((opt) =>
     opt
       .setName("team_id")
       .setDescription("Team ID (defaults to your first team)")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -57,19 +75,21 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const { player1: p1, player2: p2 } = result.data;
-    const embed = brandEmbed(`${p1.name} vs ${p2.name}`);
+    const embed = brandEmbed(
+      `${p1.playerName} vs ${p2.playerName}`,
+    ).setDescription(`${p1.mapCount} maps vs ${p2.mapCount} maps`);
 
-    const s1 = p1.stats ?? {};
-    const s2 = p2.stats ?? {};
-    const allKeys = new Set([
-      ...Object.keys(s1),
-      ...Object.keys(s2),
-    ]);
+    const a1 = p1.aggregated ?? {};
+    const a2 = p2.aggregated ?? {};
 
-    for (const key of allKeys) {
+    for (const key of COMPARE_STATS) {
+      const v1 = a1[key];
+      const v2 = a2[key];
+      if (v1 == null && v2 == null) continue;
+
       embed.addFields({
-        name: key,
-        value: `${p1.name}: ${s1[key] ?? "—"}\n${p2.name}: ${s2[key] ?? "—"}`,
+        name: formatStatName(key),
+        value: `${p1.playerName}: ${formatStatValue(v1)}\n${p2.playerName}: ${formatStatValue(v2)}`,
         inline: true,
       });
     }
@@ -83,4 +103,18 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
     throw error;
   }
+}
+
+function formatStatName(key: string): string {
+  return key
+    .replace(/Per10$/, "/10min")
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}
+
+function formatStatValue(value: number | undefined): string {
+  if (value == null) return "—";
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(1);
 }
