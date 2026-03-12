@@ -1,4 +1,4 @@
-import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { SpanStatusCode, context, propagation, trace } from "@opentelemetry/api";
 import type { Client } from "discord.js";
 import { logger } from "../utils/logger.ts";
 import { verifyBotSecret } from "./middleware/auth.ts";
@@ -22,9 +22,17 @@ export function startServer(client: Client, port: number) {
         path: url.pathname,
       };
 
-      return tracer.startActiveSpan(
-        `${req.method} ${url.pathname}`,
-        async (span) => {
+      // Extract trace context from incoming headers (traceparent/tracestate)
+      const carrier: Record<string, string> = {};
+      req.headers.forEach((value, key) => {
+        carrier[key] = value;
+      });
+      const parentContext = propagation.extract(context.active(), carrier);
+
+      return context.with(parentContext, () =>
+        tracer.startActiveSpan(
+          `${req.method} ${url.pathname}`,
+          async (span) => {
           span.setAttributes({
             "http.method": req.method,
             "http.url": url.pathname,
@@ -145,7 +153,7 @@ export function startServer(client: Client, port: number) {
             }
             span.end();
           }
-        },
+        }),
       );
     },
   });
