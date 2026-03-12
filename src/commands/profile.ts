@@ -40,9 +40,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     const result = await apiGet<ProfileData>(
-      interaction.guildId!,
       `/api/bot/profile?${params}`,
-      interaction.user.id
+      interaction.user.id,
     );
 
     if (!result.success) {

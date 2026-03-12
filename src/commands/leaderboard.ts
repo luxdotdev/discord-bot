@@ -41,8 +41,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     const result = await apiGet<LeaderboardData>(
-      interaction.guildId!,
-      `/api/bot/leaderboard?hero=${encodeURIComponent(hero)}&limit=${limit}`
+      `/api/bot/leaderboard?hero=${encodeURIComponent(hero)}&limit=${limit}`,
     );
 
     if (!result.success) {

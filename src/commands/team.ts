@@ -35,9 +35,8 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   try {
     const result = await apiGet<TeamData>(
-      interaction.guildId!,
       `/api/bot/team?teamId=${teamId}`,
-      interaction.user.id
+      interaction.user.id,
     );
 
     if (!result.success) {
