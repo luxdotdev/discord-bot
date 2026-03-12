@@ -14,6 +14,17 @@ function emit(level: LogLevel, event: Record<string, unknown>) {
     ...event,
   };
 
+  if (ENVIRONMENT === "development") {
+    const { timestamp, level: lvl, service, environment, commit_hash, type, ...rest } = entry;
+    const label = lvl === "error" ? "\x1b[31mERR\x1b[0m" : "\x1b[36mINF\x1b[0m";
+    const typeStr = type ? ` \x1b[1m${type}\x1b[0m` : "";
+    const details = Object.keys(rest).length > 0
+      ? " " + Object.entries(rest).map(([k, v]) => `\x1b[2m${k}=\x1b[0m${typeof v === "object" ? JSON.stringify(v) : v}`).join(" ")
+      : "";
+    console.log(`${label}${typeStr}${details}`);
+    return;
+  }
+
   const output = JSON.stringify(entry);
 
   if (level === "error") {
