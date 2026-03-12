@@ -2,10 +2,6 @@ import { Client, EmbedBuilder, GatewayIntentBits } from "discord.js";
 import * as ready from "./events/ready.ts";
 import * as interactionCreate from "./events/interactionCreate.ts";
 import { verifySignature } from "./utils/webhook.ts";
-import { loadKeyStore } from "./utils/key-store.ts";
-
-// Load persisted guild keys before starting
-await loadKeyStore();
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds],
