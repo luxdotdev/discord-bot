@@ -55,7 +55,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const { playerName: name, teamName, stats } = result.data;
     const embed = brandEmbed(name).setDescription(`Team: ${teamName}`);
 
-    for (const [key, value] of Object.entries(stats)) {
+    for (const [key, value] of Object.entries(stats ?? {})) {
       embed.addFields({
         name: key,
         value: String(value),

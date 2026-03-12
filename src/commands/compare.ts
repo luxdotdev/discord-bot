@@ -59,15 +59,17 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const { player1: p1, player2: p2 } = result.data;
     const embed = brandEmbed(`${p1.name} vs ${p2.name}`);
 
+    const s1 = p1.stats ?? {};
+    const s2 = p2.stats ?? {};
     const allKeys = new Set([
-      ...Object.keys(p1.stats),
-      ...Object.keys(p2.stats),
+      ...Object.keys(s1),
+      ...Object.keys(s2),
     ]);
 
     for (const key of allKeys) {
       embed.addFields({
         name: key,
-        value: `${p1.name}: ${p1.stats[key] ?? "—"}\n${p2.name}: ${p2.stats[key] ?? "—"}`,
+        value: `${p1.name}: ${s1[key] ?? "—"}\n${p2.name}: ${s2[key] ?? "—"}`,
         inline: true,
       });
     }
