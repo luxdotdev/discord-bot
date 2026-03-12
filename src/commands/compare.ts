@@ -113,8 +113,10 @@ function formatStatName(key: string): string {
     .trim();
 }
 
-function formatStatValue(value: number | undefined): string {
+function formatStatValue(value: unknown): string {
   if (value == null) return "—";
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(1);
+  const num = Number(value);
+  if (isNaN(num)) return String(value);
+  if (Number.isInteger(num)) return String(num);
+  return num.toFixed(1);
 }

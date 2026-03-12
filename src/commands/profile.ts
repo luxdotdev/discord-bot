@@ -15,6 +15,17 @@ type ProfileData = {
   trends: Record<string, number>;
 };
 
+const PROFILE_STATS = [
+  "eliminationsPer10",
+  "finalBlowsPer10",
+  "deathsPer10",
+  "heroDamagePer10",
+  "healingDealtPer10",
+  "damageTakenPer10",
+  "damageBlockedPer10",
+  "ultimatesEarnedPer10",
+] as const;
+
 export const data = new SlashCommandBuilder()
   .setName("profile")
   .setDescription("View a player profile with aggregated stats")
@@ -68,7 +79,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         inline: false,
       });
 
-    for (const [key, value] of Object.entries(aggregated ?? {})) {
+    const stats = aggregated ?? {};
+    for (const key of PROFILE_STATS) {
+      const value = stats[key];
+      if (value == null) continue;
       embed.addFields({
         name: formatStatName(key),
         value: formatStatValue(value),
@@ -89,12 +103,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
 function formatStatName(key: string): string {
   return key
+    .replace(/Per10$/, "/10min")
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (c) => c.toUpperCase())
     .trim();
 }
 
-function formatStatValue(value: number): string {
-  if (Number.isInteger(value)) return String(value);
-  return value.toFixed(1);
+function formatStatValue(value: unknown): string {
+  const num = Number(value);
+  if (isNaN(num)) return String(value);
+  if (Number.isInteger(num)) return String(num);
+  return num.toFixed(1);
 }
