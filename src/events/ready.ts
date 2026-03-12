@@ -17,7 +17,17 @@ export async function execute(client: Client<true>) {
 
   const body = commands.map((cmd) => cmd.data.toJSON());
 
-  await rest.put(Routes.applicationCommands(client.user.id), { body });
-
-  console.log(`Registered ${body.length} slash commands`);
+  const devGuildId = process.env.DEV_GUILD_ID;
+  if (devGuildId) {
+    // Guild commands update instantly — use for development
+    await rest.put(
+      Routes.applicationGuildCommands(client.user.id, devGuildId),
+      { body }
+    );
+    console.log(`Registered ${body.length} guild commands (dev: ${devGuildId})`);
+  } else {
+    // Global commands can take up to 1 hour to propagate
+    await rest.put(Routes.applicationCommands(client.user.id), { body });
+    console.log(`Registered ${body.length} global commands`);
+  }
 }
