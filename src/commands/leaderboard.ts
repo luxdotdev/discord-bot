@@ -4,6 +4,7 @@ import {
 } from "discord.js";
 import { apiGet } from "../utils/api.ts";
 import { brandEmbed, errorEmbed } from "../utils/embeds.ts";
+import { tracedDeferReply, tracedEditReply } from "../utils/interaction.ts";
 
 type LeaderboardEntry = {
   player_name: string;
@@ -34,7 +35,7 @@ export const data = new SlashCommandBuilder()
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply();
+  await tracedDeferReply(interaction);
 
   const hero = interaction.options.getString("hero", true);
   const limit = interaction.options.getInteger("limit") ?? 10;
@@ -45,7 +46,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     );
 
     if (!result.success) {
-      await interaction.editReply({ embeds: [errorEmbed(result.error)] });
+      await tracedEditReply(interaction, {
+        embeds: [errorEmbed(result.error)],
+      });
       return;
     }
 
@@ -55,7 +58,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     for (const entry of lb.leaderboard) {
       embed.addFields({
         name: `#${entry.rank} ${entry.player_name}`,
-        value: `${entry.composite_sr} CSR · ${entry.maps} maps · ${entry.minutes_played.toFixed(0)}min`,
+        value: `${entry.composite_sr} CSR · ${entry.maps} maps · ${Math.round(Number(entry.minutes_played))}min`,
         inline: true,
       });
     }
@@ -64,10 +67,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       embed.setDescription("No leaderboard data found for this hero.");
     }
 
-    await interaction.editReply({ embeds: [embed] });
-  } catch {
-    await interaction.editReply({
-      embeds: [errorEmbed("Something went wrong. Try again later.")],
-    });
+    await tracedEditReply(interaction, { embeds: [embed] });
+  } catch (error) {
+    if (interaction.deferred || interaction.replied) {
+      await tracedEditReply(interaction, {
+        embeds: [errorEmbed("Something went wrong. Try again later.")],
+      });
+    }
+    throw error;
   }
 }
