@@ -15,7 +15,8 @@ function emit(level: LogLevel, event: Record<string, unknown>) {
   };
 
   if (ENVIRONMENT === "development") {
-    const { timestamp, level: lvl, service, environment, commit_hash, type, ...rest } = entry;
+    const full: Record<string, unknown> = entry;
+    const { timestamp, level: lvl, service, environment, commit_hash, type, ...rest } = full;
     const label = lvl === "error" ? "\x1b[31mERR\x1b[0m" : "\x1b[36mINF\x1b[0m";
     const typeStr = type ? ` \x1b[1m${type}\x1b[0m` : "";
     const details = Object.keys(rest).length > 0
