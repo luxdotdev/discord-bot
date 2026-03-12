@@ -8,8 +8,11 @@ import { tracedDeferReply, tracedEditReply } from "../utils/interaction.ts";
 
 type ProfileData = {
   playerName: string;
-  teamName: string;
-  stats: Record<string, unknown>;
+  teamId: number;
+  mapCount: number;
+  heroesPlayed: string[];
+  aggregated: Record<string, number>;
+  trends: Record<string, number>;
 };
 
 export const data = new SlashCommandBuilder()
@@ -19,13 +22,13 @@ export const data = new SlashCommandBuilder()
     opt
       .setName("player")
       .setDescription("In-game player name")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addIntegerOption((opt) =>
     opt
       .setName("team_id")
       .setDescription("Team ID (defaults to your first team)")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -34,9 +37,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const playerName = interaction.options.getString("player", true);
   const teamId = interaction.options.getInteger("team_id");
 
-  const params = new URLSearchParams({
-    playerName,
-  });
+  const params = new URLSearchParams({ playerName });
   if (teamId) params.set("teamId", String(teamId));
 
   try {
@@ -52,13 +53,25 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       return;
     }
 
-    const { playerName: name, teamName, stats } = result.data;
-    const embed = brandEmbed(name).setDescription(`Team: ${teamName}`);
+    const {
+      playerName: name,
+      mapCount,
+      heroesPlayed,
+      aggregated,
+    } = result.data;
 
-    for (const [key, value] of Object.entries(stats ?? {})) {
+    const embed = brandEmbed(name)
+      .setDescription(`${mapCount} maps played · ${heroesPlayed.length} heroes`)
+      .addFields({
+        name: "Heroes",
+        value: heroesPlayed.join(", ") || "None",
+        inline: false,
+      });
+
+    for (const [key, value] of Object.entries(aggregated ?? {})) {
       embed.addFields({
-        name: key,
-        value: String(value),
+        name: formatStatName(key),
+        value: formatStatValue(value),
         inline: true,
       });
     }
@@ -72,4 +85,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
     throw error;
   }
+}
+
+function formatStatName(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}
+
+function formatStatValue(value: number): string {
+  if (Number.isInteger(value)) return String(value);
+  return value.toFixed(1);
 }
