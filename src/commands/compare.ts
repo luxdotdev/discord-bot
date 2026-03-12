@@ -1,3 +1,4 @@
+import { trace } from "@opentelemetry/api";
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
@@ -75,6 +76,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const { player1: p1, player2: p2 } = result.data;
+
+    const span = trace.getActiveSpan();
+    if (span) {
+      span.setAttributes({
+        "command.compare.player1_name": p1.playerName,
+        "command.compare.player1_map_count": p1.mapCount,
+        "command.compare.player1_aggregated": JSON.stringify(p1.aggregated),
+        "command.compare.player2_name": p2.playerName,
+        "command.compare.player2_map_count": p2.mapCount,
+        "command.compare.player2_aggregated": JSON.stringify(p2.aggregated),
+        "command.compare.api_success": true,
+      });
+    }
+
     const embed = brandEmbed(
       `${p1.playerName} vs ${p2.playerName}`,
     ).setDescription(`${p1.mapCount} maps vs ${p2.mapCount} maps`);

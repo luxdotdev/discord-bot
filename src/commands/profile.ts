@@ -1,3 +1,4 @@
+import { trace } from "@opentelemetry/api";
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
@@ -70,6 +71,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       heroesPlayed,
       aggregated,
     } = result.data;
+
+    const span = trace.getActiveSpan();
+    if (span) {
+      span.setAttributes({
+        "command.profile.player_name": name,
+        "command.profile.team_id": result.data.teamId,
+        "command.profile.map_count": mapCount,
+        "command.profile.heroes_played": heroesPlayed.join(", "),
+        "command.profile.heroes_count": heroesPlayed.length,
+        "command.profile.aggregated": JSON.stringify(aggregated),
+        "command.profile.trends": JSON.stringify(result.data.trends),
+        "command.profile.api_success": true,
+      });
+    }
 
     const embed = brandEmbed(name)
       .setDescription(`${mapCount} maps played · ${heroesPlayed.length} heroes`)

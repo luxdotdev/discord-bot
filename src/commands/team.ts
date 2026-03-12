@@ -1,3 +1,4 @@
+import { trace } from "@opentelemetry/api";
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
@@ -26,7 +27,7 @@ export const data = new SlashCommandBuilder()
   .setName("team")
   .setDescription("View team winrates and stats")
   .addIntegerOption((opt) =>
-    opt.setName("team_id").setDescription("Team ID").setRequired(true)
+    opt.setName("team_id").setDescription("Team ID").setRequired(true),
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -48,15 +49,29 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const { team, winrates } = result.data;
+
+    const span = trace.getActiveSpan();
+    if (span) {
+      span.setAttributes({
+        "command.team.team_id": teamId,
+        "command.team.team_name": team.name,
+        "command.team.member_count": team.memberCount,
+        "command.team.overall_wins": winrates.overallWins,
+        "command.team.overall_losses": winrates.overallLosses,
+        "command.team.overall_winrate": winrates.overallWinrate,
+        "command.team.map_count": Object.keys(winrates.byMap).length,
+        "command.team.by_map": JSON.stringify(winrates.byMap),
+        "command.team.api_success": true,
+      });
+    }
+
     const embed = brandEmbed(team.name)
       .setDescription(`${team.memberCount} members`)
-      .addFields(
-        {
-          name: "Overall Record",
-          value: `${winrates.overallWins}W - ${winrates.overallLosses}L (${winrates.overallWinrate}%)`,
-          inline: false,
-        }
-      );
+      .addFields({
+        name: "Overall Record",
+        value: `${winrates.overallWins}W - ${winrates.overallLosses}L (${winrates.overallWinrate}%)`,
+        inline: false,
+      });
 
     const mapEntries = Object.entries(winrates.byMap);
     if (mapEntries.length > 0) {
@@ -64,7 +79,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
         .sort((a, b) => b[1].totalWinrate - a[1].totalWinrate)
         .map(
           ([map, wr]) =>
-            `**${map}**: ${wr.totalWins}W-${wr.totalLosses}L (${wr.totalWinrate}%)`
+            `**${map}**: ${wr.totalWins}W-${wr.totalLosses}L (${wr.totalWinrate}%)`,
         )
         .join("\n");
 

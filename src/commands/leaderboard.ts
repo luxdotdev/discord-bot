@@ -1,3 +1,4 @@
+import { trace } from "@opentelemetry/api";
 import {
   SlashCommandBuilder,
   type ChatInputCommandInteraction,
@@ -25,13 +26,13 @@ export const data = new SlashCommandBuilder()
   .setName("leaderboard")
   .setDescription("View hero leaderboard")
   .addStringOption((opt) =>
-    opt.setName("hero").setDescription("Hero name").setRequired(true)
+    opt.setName("hero").setDescription("Hero name").setRequired(true),
   )
   .addIntegerOption((opt) =>
     opt
       .setName("limit")
       .setDescription("Number of entries (default 10)")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -53,6 +54,19 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
 
     const { data: lb } = result;
+
+    const span = trace.getActiveSpan();
+    if (span) {
+      span.setAttributes({
+        "command.leaderboard.hero": lb.hero,
+        "command.leaderboard.role": lb.role,
+        "command.leaderboard.entry_count": lb.leaderboard.length,
+        "command.leaderboard.entries": JSON.stringify(lb.leaderboard),
+        "command.leaderboard.requested_limit": limit,
+        "command.leaderboard.api_success": true,
+      });
+    }
+
     const embed = brandEmbed(`${lb.hero} Leaderboard (${lb.role})`);
 
     for (const entry of lb.leaderboard) {
