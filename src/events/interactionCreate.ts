@@ -43,11 +43,19 @@ export async function execute(interaction: Interaction) {
   await tracer.startActiveSpan(
     `command.${interaction.commandName}`,
     async (span) => {
+      const options: Record<string, unknown> = {};
+      for (const opt of interaction.options.data) {
+        options[opt.name] = opt.value;
+      }
+
       span.setAttributes({
         "discord.command": interaction.commandName,
         "discord.user_id": interaction.user.id,
+        "discord.user_tag": interaction.user.tag,
         "discord.guild_id": interaction.guildId ?? "",
         "discord.channel_id": interaction.channelId ?? "",
+        "discord.interaction_id": interaction.id,
+        "discord.options": JSON.stringify(options),
       });
 
       try {
