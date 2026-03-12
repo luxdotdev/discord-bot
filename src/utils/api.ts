@@ -11,7 +11,7 @@ export async function apiGet<T>(
   path: string,
   discordUserId?: string
 ): Promise<ApiResponse<T>> {
-  const apiKey = getApiKeyForGuild(guildId);
+  const apiKey = await getApiKeyForGuild(guildId);
   if (!apiKey) {
     return {
       success: false,
@@ -37,7 +37,7 @@ export async function apiPost<T>(
   body: unknown,
   discordUserId?: string
 ): Promise<ApiResponse<T>> {
-  const apiKey = getApiKeyForGuild(guildId);
+  const apiKey = await getApiKeyForGuild(guildId);
   if (!apiKey) {
     return {
       success: false,
@@ -67,7 +67,7 @@ export async function apiDelete<T>(
   path: string,
   body: unknown
 ): Promise<ApiResponse<T>> {
-  const apiKey = getApiKeyForGuild(guildId);
+  const apiKey = await getApiKeyForGuild(guildId);
   if (!apiKey) {
     return {
       success: false,
