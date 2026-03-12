@@ -1,6 +1,6 @@
 import { Client, EmbedBuilder, GatewayIntentBits } from "discord.js";
-import * as ready from "./events/ready.ts";
 import * as interactionCreate from "./events/interactionCreate.ts";
+import * as ready from "./events/ready.ts";
 import { verifySignature } from "./utils/webhook.ts";
 
 const client = new Client({
@@ -10,7 +10,7 @@ const client = new Client({
 // Register event handlers
 client.once(ready.name, (...args) => ready.execute(...(args as [any])));
 client.on(interactionCreate.name, (...args) =>
-  interactionCreate.execute(...(args as [any]))
+  interactionCreate.execute(...(args as [any])),
 );
 
 // Login to Discord
@@ -20,7 +20,7 @@ client.login(process.env.DISCORD_TOKEN);
 
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const NOTIFICATION_CHANNEL_ID = process.env.NOTIFICATION_CHANNEL_ID;
-const WEBHOOK_PORT = Number(process.env.PORT) || 3000;
+const WEBHOOK_PORT = Number(process.env.PORT) || 8080;
 
 type ScrimCreatedPayload = {
   type: "scrim.created";
@@ -68,7 +68,7 @@ const server = Bun.serve({
                 name: "Uploaded by",
                 value: payload.data.createdBy,
                 inline: true,
-              }
+              },
             )
             .setTimestamp(new Date(payload.timestamp));
 
