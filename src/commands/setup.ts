@@ -31,7 +31,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const apiKey = interaction.options.getString("api_key", true);
 
-  setApiKeyForGuild(guildId, apiKey);
+  await setApiKeyForGuild(guildId, apiKey);
 
   await interaction.editReply({
     embeds: [
