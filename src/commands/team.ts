@@ -4,7 +4,8 @@ import {
   type ChatInputCommandInteraction,
 } from "discord.js";
 import { apiGet } from "../utils/api.ts";
-import { brandEmbed, errorEmbed } from "../utils/embeds.ts";
+import { BRAND_COLOR, brandEmbed, errorEmbed } from "../utils/embeds.ts";
+import { padLeft, padRight, statBar } from "../utils/format.ts";
 import { tracedDeferReply, tracedEditReply } from "../utils/interaction.ts";
 
 type MapWinrate = {
@@ -22,6 +23,9 @@ type TeamData = {
     byMap: Record<string, MapWinrate>;
   };
 };
+
+const COLOR_GREEN = 0x22c55e;
+const COLOR_RED = 0xef4444;
 
 export const data = new SlashCommandBuilder()
   .setName("team")
@@ -65,25 +69,54 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    const embed = brandEmbed(team.name)
-      .setDescription(`${team.memberCount} members`)
-      .addFields({
-        name: "Overall Record",
-        value: `${winrates.overallWins}W - ${winrates.overallLosses}L (${winrates.overallWinrate}%)`,
-        inline: false,
-      });
+    const wr = winrates.overallWinrate;
+    const totalMaps = winrates.overallWins + winrates.overallLosses;
 
+    // Dynamic color based on winrate
+    const embedColor =
+      wr > 55 ? COLOR_GREEN : wr < 45 ? COLOR_RED : BRAND_COLOR;
+
+    const embed = brandEmbed(team.name)
+      .setColor(embedColor)
+      .setDescription(`${team.memberCount} members · ${totalMaps} maps played`);
+
+    // Overall record with bar
+    const bar = statBar(wr / 100);
+    embed.addFields({
+      name: "Overall Record",
+      value: `**${winrates.overallWins}W - ${winrates.overallLosses}L** (${wr}%)\n${bar} ${Math.round(wr)}%`,
+      inline: false,
+    });
+
+    // Map breakdown as code block table
     const mapEntries = Object.entries(winrates.byMap);
     if (mapEntries.length > 0) {
-      const mapLines = mapEntries
-        .sort((a, b) => b[1].totalWinrate - a[1].totalWinrate)
-        .map(
-          ([map, wr]) =>
-            `**${map}**: ${wr.totalWins}W-${wr.totalLosses}L (${wr.totalWinrate}%)`,
-        )
-        .join("\n");
+      const sorted = mapEntries.sort(
+        (a, b) => b[1].totalWinrate - a[1].totalWinrate,
+      );
 
-      embed.addFields({ name: "By Map", value: mapLines, inline: false });
+      const mapNameWidth = Math.max(...sorted.map(([name]) => name.length), 3);
+      const header =
+        padRight("Map", mapNameWidth + 1) +
+        padLeft("W", 4) +
+        padLeft("L", 4) +
+        padLeft("WR%", 7);
+      const separator = "─".repeat(header.length);
+
+      const rows = sorted.map(
+        ([map, data]) =>
+          padRight(map, mapNameWidth + 1) +
+          padLeft(String(data.totalWins), 4) +
+          padLeft(String(data.totalLosses), 4) +
+          padLeft(`${data.totalWinrate.toFixed(1)}%`, 7),
+      );
+
+      const table = "```\n" + [header, separator, ...rows].join("\n") + "\n```";
+      embed.addFields({
+        name: "Map Breakdown",
+        value: table,
+        inline: false,
+      });
     }
 
     await tracedEditReply(interaction, { embeds: [embed] });

@@ -5,6 +5,13 @@ import {
 } from "discord.js";
 import { apiGet } from "../utils/api.ts";
 import { brandEmbed, errorEmbed } from "../utils/embeds.ts";
+import {
+  formatDuration,
+  formatNumber,
+  medalEmoji,
+  padLeft,
+  padRight,
+} from "../utils/format.ts";
 import { tracedDeferReply, tracedEditReply } from "../utils/interaction.ts";
 
 type LeaderboardEntry = {
@@ -67,18 +74,55 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    const embed = brandEmbed(`${lb.hero} Leaderboard (${lb.role})`);
-
-    for (const entry of lb.leaderboard) {
-      embed.addFields({
-        name: `#${entry.rank} ${entry.player_name}`,
-        value: `${entry.composite_sr} CSR · ${entry.maps} maps · ${Math.round(Number(entry.minutes_played))}min`,
-        inline: true,
-      });
-    }
+    const embed = brandEmbed(`${lb.hero} Leaderboard · ${lb.role}`);
 
     if (lb.leaderboard.length === 0) {
       embed.setDescription("No leaderboard data found for this hero.");
+      await tracedEditReply(interaction, { embeds: [embed] });
+      return;
+    }
+
+    // Build monospace table
+    const nameWidth = Math.max(
+      ...lb.leaderboard.map((e) => e.player_name.length),
+      6,
+    );
+    const header =
+      padRight("#", 3) +
+      padRight("Player", nameWidth + 1) +
+      padLeft("CSR", 7) +
+      padLeft("Maps", 6) +
+      padLeft("Time", 8);
+    const separator = "─".repeat(header.length);
+
+    const rows = lb.leaderboard.map((entry) => {
+      const timePlayed = formatDuration(entry.minutes_played * 60);
+      return (
+        padRight(String(entry.rank), 3) +
+        padRight(entry.player_name, nameWidth + 1) +
+        padLeft(formatNumber(entry.composite_sr), 7) +
+        padLeft(String(entry.maps), 6) +
+        padLeft(timePlayed, 8)
+      );
+    });
+
+    const table = "```\n" + [header, separator, ...rows].join("\n") + "\n```";
+    embed.setDescription(table);
+
+    // Medal highlights for top 3
+    const top3 = lb.leaderboard.filter((e) => e.rank <= 3);
+    if (top3.length > 0) {
+      const highlights = top3
+        .map(
+          (e) =>
+            `${medalEmoji(e.rank)} ${e.player_name} · ${formatNumber(e.composite_sr)} CSR · Top ${e.percentile}%`,
+        )
+        .join("\n");
+      embed.addFields({
+        name: "Top Players",
+        value: highlights,
+        inline: false,
+      });
     }
 
     await tracedEditReply(interaction, { embeds: [embed] });

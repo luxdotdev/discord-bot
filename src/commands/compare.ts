@@ -5,6 +5,12 @@ import {
 } from "discord.js";
 import { apiGet } from "../utils/api.ts";
 import { brandEmbed, errorEmbed } from "../utils/embeds.ts";
+import {
+  formatNumber,
+  formatStatName,
+  padLeft,
+  padRight,
+} from "../utils/format.ts";
 import { tracedDeferReply, tracedEditReply } from "../utils/interaction.ts";
 
 type PlayerCompareData = {
@@ -18,7 +24,6 @@ type CompareData = {
   player2: PlayerCompareData;
 };
 
-// Stats most useful for a side-by-side comparison
 const COMPARE_STATS = [
   "eliminationsPer10",
   "finalBlowsPer10",
@@ -29,6 +34,9 @@ const COMPARE_STATS = [
   "damageBlockedPer10",
   "ultimatesEarnedPer10",
 ] as const;
+
+// Stats where lower is better
+const LOWER_IS_BETTER = new Set(["deathsPer10", "damageTakenPer10"]);
 
 export const data = new SlashCommandBuilder()
   .setName("compare")
@@ -44,12 +52,6 @@ export const data = new SlashCommandBuilder()
       .setName("player2")
       .setDescription("Second player name")
       .setRequired(true),
-  )
-  .addIntegerOption((opt) =>
-    opt
-      .setName("team_id")
-      .setDescription("Team ID (defaults to your first team)")
-      .setRequired(false),
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
@@ -57,15 +59,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const player1 = interaction.options.getString("player1", true);
   const player2 = interaction.options.getString("player2", true);
-  const teamId = interaction.options.getInteger("team_id");
-
-  const params = new URLSearchParams({ player1, player2 });
-  if (teamId) params.set("teamId", String(teamId));
 
   try {
     const result = await apiGet<CompareData>(
-      `/api/bot/compare?${params}`,
-      interaction.user.id,
+      `/api/bot/compare?player1=${encodeURIComponent(player1)}&player2=${encodeURIComponent(player2)}`,
     );
 
     if (!result.success) {
@@ -90,24 +87,60 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       });
     }
 
-    const embed = brandEmbed(
-      `${p1.playerName} vs ${p2.playerName}`,
-    ).setDescription(`${p1.mapCount} maps vs ${p2.mapCount} maps`);
-
     const a1 = p1.aggregated ?? {};
     const a2 = p2.aggregated ?? {};
+
+    // Truncate names for column headers (max 12 chars)
+    const n1 = p1.playerName.slice(0, 12);
+    const n2 = p2.playerName.slice(0, 12);
+
+    const statNameWidth = 18;
+    const colWidth = Math.max(n1.length, n2.length, 8);
+
+    const headerLine =
+      padRight("", statNameWidth) +
+      padLeft(n1, colWidth) +
+      "  " +
+      padLeft(n2, colWidth);
+
+    const rows: string[] = [headerLine];
 
     for (const key of COMPARE_STATS) {
       const v1 = a1[key];
       const v2 = a2[key];
       if (v1 == null && v2 == null) continue;
 
-      embed.addFields({
-        name: formatStatName(key),
-        value: `${p1.playerName}: ${formatStatValue(v1)}\n${p2.playerName}: ${formatStatValue(v2)}`,
-        inline: true,
-      });
+      const s1 = v1 != null ? formatNumber(v1) : "—";
+      const s2 = v2 != null ? formatNumber(v2) : "—";
+
+      let arrow = "  ";
+      if (v1 != null && v2 != null) {
+        const lowerBetter = LOWER_IS_BETTER.has(key);
+        if (lowerBetter) {
+          arrow = v1 < v2 ? "◄ " : v1 > v2 ? " ►" : "  ";
+        } else {
+          arrow = v1 > v2 ? "◄ " : v1 < v2 ? " ►" : "  ";
+        }
+      }
+
+      rows.push(
+        padRight(formatStatName(key), statNameWidth) +
+          padLeft(s1, colWidth) +
+          "  " +
+          padLeft(s2, colWidth) +
+          "  " +
+          arrow,
+      );
     }
+
+    const table = "```\n" + rows.join("\n") + "\n```";
+
+    const embed = brandEmbed(`${p1.playerName} vs ${p2.playerName}`)
+      .setDescription(`${p1.mapCount} maps · ${p2.mapCount} maps`)
+      .addFields({ name: "Stats", value: table, inline: false })
+      .setFooter({
+        text: `◄ ${n1} leads · ► ${n2} leads · Parsertime`,
+      });
 
     await tracedEditReply(interaction, { embeds: [embed] });
   } catch (error) {
@@ -118,20 +151,4 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     }
     throw error;
   }
-}
-
-function formatStatName(key: string): string {
-  return key
-    .replace(/Per10$/, "/10min")
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (c) => c.toUpperCase())
-    .trim();
-}
-
-function formatStatValue(value: unknown): string {
-  if (value == null) return "—";
-  const num = Number(value);
-  if (isNaN(num)) return String(value);
-  if (Number.isInteger(num)) return String(num);
-  return num.toFixed(1);
 }
