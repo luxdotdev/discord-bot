@@ -11,6 +11,6 @@ export function brandEmbed(title: string): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(BRAND_COLOR)
     .setTitle(title)
-    .setFooter({ text: "Parsertime" })
+    .setFooter({ text: "Parsertime", iconURL: "https://parsertime.app/icon.png" })
     .setTimestamp();
 }

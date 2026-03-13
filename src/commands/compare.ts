@@ -140,6 +140,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .addFields({ name: "Stats", value: table, inline: false })
       .setFooter({
         text: `◄ ${n1} leads · ► ${n2} leads · Parsertime`,
+        iconURL: "https://parsertime.app/icon.png",
       });
 
     await tracedEditReply(interaction, { embeds: [embed] });
