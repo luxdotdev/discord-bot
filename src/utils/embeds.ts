@@ -1,16 +1,16 @@
 import { EmbedBuilder } from "discord.js";
 
-const BRAND_COLOR = 0x0ea5e9;
+export const BRAND_COLOR = 0x0ea5e9;
 const ERROR_COLOR = 0xef4444;
 
 export function errorEmbed(message: string): EmbedBuilder {
-  return new EmbedBuilder()
-    .setColor(ERROR_COLOR)
-    .setDescription(message);
+  return new EmbedBuilder().setColor(ERROR_COLOR).setDescription(message);
 }
 
 export function brandEmbed(title: string): EmbedBuilder {
   return new EmbedBuilder()
     .setColor(BRAND_COLOR)
-    .setTitle(title);
+    .setTitle(title)
+    .setFooter({ text: "Parsertime" })
+    .setTimestamp();
 }
