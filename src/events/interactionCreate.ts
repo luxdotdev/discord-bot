@@ -2,6 +2,7 @@ import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { Events, MessageFlags, type Interaction } from "discord.js";
 import * as availability from "../commands/availability.ts";
 import * as compare from "../commands/compare.ts";
+import * as help from "../commands/help.ts";
 import * as leaderboard from "../commands/leaderboard.ts";
 import * as profile from "../commands/profile.ts";
 import * as team from "../commands/team.ts";
@@ -21,6 +22,7 @@ commands.set(teams.data.name, teams);
 commands.set(profile.data.name, profile);
 commands.set(compare.data.name, compare);
 commands.set(availability.data.name, availability);
+commands.set(help.data.name, help);
 
 export const name = Events.InteractionCreate;
 
