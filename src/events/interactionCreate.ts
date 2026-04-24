@@ -1,5 +1,6 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { Events, MessageFlags, type Interaction } from "discord.js";
+import * as availability from "../commands/availability.ts";
 import * as compare from "../commands/compare.ts";
 import * as leaderboard from "../commands/leaderboard.ts";
 import * as profile from "../commands/profile.ts";
@@ -17,6 +18,7 @@ commands.set(leaderboard.data.name, leaderboard);
 commands.set(team.data.name, team);
 commands.set(profile.data.name, profile);
 commands.set(compare.data.name, compare);
+commands.set(availability.data.name, availability);
 
 export const name = Events.InteractionCreate;
 
