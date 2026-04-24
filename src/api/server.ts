@@ -2,7 +2,11 @@ import { SpanStatusCode, context, propagation, trace } from "@opentelemetry/api"
 import type { Client } from "discord.js";
 import { logger } from "../utils/logger.ts";
 import { verifyBotSecret } from "./middleware/auth.ts";
-import { getGuildChannels, getGuilds } from "./routes/guilds.ts";
+import {
+  getGuildChannelsForUser,
+  getGuildsForUser,
+  isUserGuildMember,
+} from "./routes/guilds.ts";
 import {
   sendNotification,
   type NotificationPayload,
@@ -59,10 +63,26 @@ export function startServer(client: Client, port: number) {
             }
 
             if (req.method === "GET" && url.pathname === "/api/guilds") {
-              const guilds = getGuilds(client);
+              const userId = url.searchParams.get("userId");
+              if (!userId) {
+                event.outcome = "bad_request";
+                event.status_code = 400;
+                span.setAttributes({ "http.status_code": 400 });
+                span.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: "userId required",
+                });
+                return Response.json(
+                  { error: "userId query parameter is required" },
+                  { status: 400 },
+                );
+              }
+              span.setAttributes({ "discord.user_id": userId });
+              const guilds = await getGuildsForUser(client, userId);
               event.outcome = "success";
               event.status_code = 200;
               event.guild_count = guilds.length;
+              event.user_id = userId;
               span.setAttributes({
                 "http.status_code": 200,
                 "bot.guild_count": guilds.length,
@@ -71,19 +91,78 @@ export function startServer(client: Client, port: number) {
               return Response.json(guilds);
             }
 
+            const memberCheckMatch = url.pathname.match(
+              /^\/api\/guilds\/(\d+)\/members\/(\d+)$/,
+            );
+            if (req.method === "GET" && memberCheckMatch) {
+              const guildId = memberCheckMatch[1];
+              const userId = memberCheckMatch[2];
+              const member = await isUserGuildMember(client, guildId, userId);
+              event.outcome = "success";
+              event.status_code = 200;
+              event.guild_id = guildId;
+              event.user_id = userId;
+              event.is_member = member;
+              span.setAttributes({
+                "http.status_code": 200,
+                "discord.guild_id": guildId,
+                "discord.user_id": userId,
+                "bot.is_member": member,
+              });
+              span.setStatus({ code: SpanStatusCode.OK });
+              return Response.json({ member });
+            }
+
             const channelsMatch = url.pathname.match(
               /^\/api\/guilds\/(\d+)\/channels$/,
             );
             if (req.method === "GET" && channelsMatch) {
               const guildId = channelsMatch[1];
-              const channels = getGuildChannels(client, guildId);
+              const userId = url.searchParams.get("userId");
+              if (!userId) {
+                event.outcome = "bad_request";
+                event.status_code = 400;
+                span.setAttributes({ "http.status_code": 400 });
+                span.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: "userId required",
+                });
+                return Response.json(
+                  { error: "userId query parameter is required" },
+                  { status: 400 },
+                );
+              }
+              span.setAttributes({
+                "discord.guild_id": guildId,
+                "discord.user_id": userId,
+              });
+              const channels = await getGuildChannelsForUser(
+                client,
+                guildId,
+                userId,
+              );
+              if (channels === null) {
+                event.outcome = "forbidden";
+                event.status_code = 403;
+                event.guild_id = guildId;
+                event.user_id = userId;
+                span.setAttributes({ "http.status_code": 403 });
+                span.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: "User is not a member of the guild",
+                });
+                return Response.json(
+                  { error: "User is not a member of that guild" },
+                  { status: 403 },
+                );
+              }
               event.outcome = "success";
               event.status_code = 200;
               event.guild_id = guildId;
+              event.user_id = userId;
               event.channel_count = channels.length;
               span.setAttributes({
                 "http.status_code": 200,
-                "discord.guild_id": guildId,
                 "bot.channel_count": channels.length,
               });
               span.setStatus({ code: SpanStatusCode.OK });
