@@ -7,6 +7,8 @@ type PendingReminder = {
   teamName: string;
   scheduleId: string;
   url: string;
+  weekStart: string;
+  weekEnd: string;
   guildId: string;
   channelId: string;
   roleId: string | null;
@@ -84,6 +86,8 @@ async function tick(client: Client, apiUrl: string, secret: string) {
           teamName: job.teamName,
           scheduleId: job.scheduleId,
           url: job.url,
+          weekStart: job.weekStart,
+          weekEnd: job.weekEnd,
           roleId: job.roleId,
         },
       });
