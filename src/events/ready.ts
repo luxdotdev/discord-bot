@@ -4,9 +4,10 @@ import * as compare from "../commands/compare.ts";
 import * as leaderboard from "../commands/leaderboard.ts";
 import * as profile from "../commands/profile.ts";
 import * as team from "../commands/team.ts";
+import * as teams from "../commands/teams.ts";
 import { logger } from "../utils/logger.ts";
 
-const commands = [leaderboard, team, profile, compare, availability];
+const commands = [leaderboard, team, profile, compare, availability, teams];
 
 export const name = Events.ClientReady;
 export const once = true;

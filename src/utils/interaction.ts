@@ -6,11 +6,12 @@ const tracer = trace.getTracer("discord-bot");
 
 export async function tracedDeferReply(
   interaction: ChatInputCommandInteraction,
+  options?: Parameters<typeof interaction.deferReply>[0],
 ) {
   return tracer.startActiveSpan("discord.deferReply", async (span) => {
     try {
       const deferStart = Date.now();
-      await interaction.deferReply();
+      await interaction.deferReply(options);
       span.setAttributes({ "discord.defer_ms": Date.now() - deferStart });
       span.setStatus({ code: SpanStatusCode.OK });
     } catch (error) {

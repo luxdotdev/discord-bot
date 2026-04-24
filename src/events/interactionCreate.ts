@@ -5,6 +5,7 @@ import * as compare from "../commands/compare.ts";
 import * as leaderboard from "../commands/leaderboard.ts";
 import * as profile from "../commands/profile.ts";
 import * as team from "../commands/team.ts";
+import * as teams from "../commands/teams.ts";
 import { logger } from "../utils/logger.ts";
 
 const tracer = trace.getTracer("discord-bot");
@@ -16,6 +17,7 @@ const commands = new Map<
 
 commands.set(leaderboard.data.name, leaderboard);
 commands.set(team.data.name, team);
+commands.set(teams.data.name, teams);
 commands.set(profile.data.name, profile);
 commands.set(compare.data.name, compare);
 commands.set(availability.data.name, availability);
