@@ -7,6 +7,17 @@ type ScrimCreatedData = {
   teamId: number;
 };
 
+type ScrimRequestData = {
+  fromTeamId: number;
+  fromTeamName: string;
+  fromBracketLabel: string;
+  fromTsr: number;
+  toTsr: number;
+  fromRoster: Array<{ battletag: string; tsr: number | null }>;
+  message: string;
+  teamId: number; // recipient — matches BotNotificationConfig.teamIds
+};
+
 type AvailabilityReminderData = {
   teamId: number;
   teamName: string;
@@ -31,9 +42,17 @@ type AvailabilityReminderNotification = {
   data: AvailabilityReminderData;
 };
 
+type ScrimRequestNotification = {
+  guildId: string;
+  channelId: string;
+  event: "scrim.request";
+  data: ScrimRequestData;
+};
+
 export type NotificationPayload =
   | ScrimNotification
-  | AvailabilityReminderNotification;
+  | AvailabilityReminderNotification
+  | ScrimRequestNotification;
 
 export async function sendNotification(
   client: Client,
@@ -51,6 +70,36 @@ export async function sendNotification(
         `**${body.data.scrimName}** was created by ${body.data.createdBy}`,
       )
       .setColor(0x0ea5e9)
+      .setTimestamp();
+    await channel.send({ embeds: [embed] });
+    return;
+  }
+
+  if (body.event === "scrim.request") {
+    const delta = body.data.fromTsr - body.data.toTsr;
+    const sign = delta > 0 ? "+" : delta < 0 ? "-" : "±";
+    const deltaLabel = `${sign}${Math.abs(delta)}`;
+    const rosterLines = body.data.fromRoster
+      .slice(0, 5)
+      .map(
+        (p) =>
+          `• ${p.battletag}: TSR ${p.tsr !== null ? p.tsr : "—"}`,
+      )
+      .join("\n");
+    const embed = new EmbedBuilder()
+      .setTitle(`${body.data.fromTeamName} wants to scrim`)
+      .setDescription(body.data.message)
+      .addFields(
+        { name: "Bracket", value: body.data.fromBracketLabel, inline: true },
+        {
+          name: "TSR",
+          value: `${body.data.fromTsr} (${deltaLabel} from your roster)`,
+          inline: true,
+        },
+        { name: "Top roster", value: rosterLines || "—" },
+      )
+      .setURL(`https://parsertime.app/team/${body.data.fromTeamId}`)
+      .setColor(0xf59e0b)
       .setTimestamp();
     await channel.send({ embeds: [embed] });
     return;
